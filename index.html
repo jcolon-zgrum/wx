@@ -1,0 +1,76 @@
+<!doctype html>
+<!-- Hourly weather strip for a Homarr iframe tile.
+     ?name=Humacao&lat=18.1497&lon=-65.8274[&unit=c]
+     Data: Open-Meteo (no key). Fits as many hours as the tile is wide. -->
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hourly weather</title>
+<style>
+:root{--fg:#c9cbd1;--dim:#7d808a;--rain:#15aabf;--accent:#4c6ef5;--warm:#f2b84b}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:transparent;color:var(--fg);
+  font:500 13px/1.2 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
+body{display:flex;flex-direction:column;justify-content:center;gap:10px;padding:10px 14px}
+header{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.city{font-weight:600;font-size:14px}
+.now{font-size:20px;font-weight:600;color:#e6e7ea}
+.cond{color:var(--dim);overflow:hidden;text-overflow:ellipsis}
+.hi{margin-left:auto;color:var(--dim);font-size:12px}
+.strip{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px}
+.h{display:flex;flex-direction:column;align-items:center;gap:5px;padding:6px 0 5px;border-radius:8px}
+.h.first{background:rgba(76,110,245,.14)}
+.t{color:var(--dim);font-size:11px}
+.h.first .t{color:#aab6ff}
+.deg{font-weight:600;font-variant-numeric:tabular-nums}
+svg{width:20px;height:20px;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bar{width:70%;height:3px;border-radius:2px;background:rgba(255,255,255,.07);position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--rain)}
+.p{font-size:10px;color:var(--rain);height:10px;font-variant-numeric:tabular-nums}
+.err{color:var(--dim);text-align:center}
+</style></head><body><div class="err">Loading…</div>
+<script>
+const q=new URLSearchParams(location.search);
+const NAME=q.get("name")||"Humacao",LAT=q.get("lat")||"18.1497",LON=q.get("lon")||"-65.8274";
+const F=q.get("unit")!=="c";
+const W={0:"Clear",1:"Mostly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Fog",51:"Drizzle",53:"Drizzle",55:"Drizzle",
+ 61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Freezing rain",71:"Snow",73:"Snow",75:"Snow",77:"Snow",
+ 80:"Showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Snow showers",95:"Thunderstorm",96:"Thunderstorm",99:"Thunderstorm"};
+const S='stroke="currentColor"';
+const sun=`<g ${S} style="color:var(--warm)"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></g>`;
+const moon=`<path ${S} style="color:#aab6ff" d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/>`;
+const cloud=(y=0)=>`<path ${S} transform="translate(0 ${y})" d="M7 18h10a4 4 0 0 0 .5-8 6 6 0 0 0-11.4 1.6A3.3 3.3 0 0 0 7 18z"/>`;
+const drops=`<path ${S} style="color:var(--rain)" d="M8 19l-1 2M12 19l-1 2M16 19l-1 2"/>`;
+function icon(c,day){
+  let g;
+  if(c<=1)g=day?sun:moon;
+  else if(c===2)g=`<g transform="translate(5 -3) scale(.6)">${day?sun:moon}</g>`+cloud(2);
+  else if(c===3)g=cloud();
+  else if(c<50)g=cloud(-2)+`<path ${S} d="M5 20h14M8 23h8" style="color:var(--dim)"/>`;
+  else if(c>=95)g=cloud(-3)+`<path ${S} style="color:var(--warm)" d="M12 16l-2 4h3l-2 4"/>`;
+  else if(c>=71&&c<=77||c>=85&&c<=86)g=cloud(-3)+`<path ${S} d="M8 19h.01M12 21h.01M16 19h.01" style="color:#fff"/>`;
+  else g=cloud(-3)+drops;
+  return `<svg viewBox="0 0 24 24" style="color:var(--fg)">${g}</svg>`;
+}
+const hr=t=>{const h=+t.slice(11,13);return h===0?"12a":h===12?"12p":h<12?h+"a":(h-12)+"p"};
+async function load(){
+  const u=`https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LON}`+
+    `&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,precipitation_probability,weather_code,is_day`+
+    `&daily=temperature_2m_max,temperature_2m_min&forecast_days=2&forecast_hours=24&timezone=auto`+(F?"&temperature_unit=fahrenheit":"");
+  try{
+    const d=await (await fetch(u)).json(),h=d.hourly,c=d.current;
+    const n=Math.max(4,Math.min(24,Math.floor((innerWidth-28)/50)));
+    let cells="";
+    for(let i=0;i<n&&i<h.time.length;i++){
+      const p=h.precipitation_probability[i]??0;
+      cells+=`<div class="h${i?"":" first"}"><span class="t">${i?hr(h.time[i]):"Now"}</span>${i?icon(h.weather_code[i],h.is_day[i]):icon(c.weather_code,c.is_day)}`+
+        `<span class="deg">${Math.round(i?h.temperature_2m[i]:c.temperature_2m)}°</span><span class="bar"><i style="width:${p}%"></i></span>`+
+        `<span class="p">${p>=20?p+"%":""}</span></div>`;
+    }
+    document.body.innerHTML=`<header><span class="city">${NAME.replace(/[<&]/g,"")}</span>`+
+      `<span class="now">${Math.round(c.temperature_2m)}°</span><span class="cond">${W[c.weather_code]||""}</span>`+
+      `<span class="hi">H ${Math.round(d.daily.temperature_2m_max[0])}° · L ${Math.round(d.daily.temperature_2m_min[0])}°</span></header>`+
+      `<div class="strip">${cells}</div>`;
+  }catch(e){document.body.innerHTML='<div class="err">Weather unavailable</div>'}
+}
+load();setInterval(load,15*60e3);addEventListener("resize",()=>{clearTimeout(window._r);window._r=setTimeout(load,300)});
+</script></body></html>
