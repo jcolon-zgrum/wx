@@ -4,13 +4,15 @@
      Data: Open-Meteo (no key). Fits as many hours as the tile is wide. -->
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>Hourly weather</title>
 <style>
-:root{--fg:#c9cbd1;--dim:#7d808a;--rain:#15aabf;--accent:#4c6ef5;--warm:#f2b84b}
+:root{color-scheme:dark;--fg:#c9cbd1;--dim:#7d808a;--rain:#15aabf;--accent:#4c6ef5;--warm:#f2b84b}
 *{box-sizing:border-box;margin:0}
 html,body{height:100%;background:transparent;color:var(--fg);
   font:500 13px/1.2 Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;overflow:hidden}
-body{display:flex;flex-direction:column;justify-content:center;gap:10px;padding:10px 14px}
+body{display:flex;align-items:center;justify-content:center;padding:4px 10px}
+main{display:flex;flex-direction:column;gap:8px;width:100%;transform-origin:center}
 header{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
 .city{font-weight:600;font-size:14px}
 .now{font-size:20px;font-weight:600;color:#e6e7ea}
@@ -27,6 +29,7 @@ svg{width:20px;height:20px;fill:none;stroke-width:1.7;stroke-linecap:round;strok
 .bar i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--rain)}
 .p{font-size:10px;color:var(--rain);height:10px;font-variant-numeric:tabular-nums}
 .err{color:var(--dim);text-align:center}
+@media (max-height:130px){.p{display:none}main{gap:5px}.h{gap:3px;padding:4px 0}}
 </style></head><body><div class="err">Loading…</div>
 <script>
 const q=new URLSearchParams(location.search);
@@ -66,11 +69,13 @@ async function load(){
         `<span class="deg">${Math.round(i?h.temperature_2m[i]:c.temperature_2m)}°</span><span class="bar"><i style="width:${p}%"></i></span>`+
         `<span class="p">${p>=20?p+"%":""}</span></div>`;
     }
-    document.body.innerHTML=`<header><span class="city">${NAME.replace(/[<&]/g,"")}</span>`+
+    document.body.innerHTML=`<main id="m"><header><span class="city">${NAME.replace(/[<&]/g,"")}</span>`+
       `<span class="now">${Math.round(c.temperature_2m)}°</span><span class="cond">${W[c.weather_code]||""}</span>`+
       `<span class="hi">H ${Math.round(d.daily.temperature_2m_max[0])}° · L ${Math.round(d.daily.temperature_2m_min[0])}°</span></header>`+
-      `<div class="strip">${cells}</div>`;
+      `<div class="strip">${cells}</div></main>`;fit();
   }catch(e){document.body.innerHTML='<div class="err">Weather unavailable</div>'}
 }
+function fit(){const m=document.getElementById("m");if(!m)return;m.style.zoom=1;
+  const z=Math.min(1,(innerHeight-8)/m.scrollHeight);m.style.zoom=z<1?z.toFixed(3):1}
 load();setInterval(load,15*60e3);addEventListener("resize",()=>{clearTimeout(window._r);window._r=setTimeout(load,300)});
 </script></body></html>
